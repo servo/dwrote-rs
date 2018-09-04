@@ -14,6 +14,7 @@ use std::path::Path;
 
 use comptr::ComPtr;
 
+use winapi::Interface;
 use winapi::ctypes::c_void;
 use winapi::um::dwrite::{IDWriteFontFace, IDWriteFontFile, IDWriteFontFileStream};
 use winapi::um::dwrite::{IDWriteFontFileLoader, IDWriteLocalFontFileLoader};
@@ -23,9 +24,6 @@ use winapi::um::dwrite::{DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FILE_TYPE_UNKNOWN};
 use font_file_loader_impl::DataFontHelper;
 use font_face::FontFace;
 use super::DWriteFactory;
-
-DEFINE_GUID!{UuidOfIDWriteFontFileLoader, 0x727cad4e, 0xd6af, 0x4c9e, 0x8a, 0x08, 0xd6, 0x95, 0xb1, 0x1c, 0xaa, 0x49}
-DEFINE_GUID!{UuidOfIDWriteLocalFontFileLoader, 0xb2d9f3ec, 0xc9fe, 0x4a11, 0xa2, 0xec, 0xd8, 0x62, 0x08, 0xf7, 0xc0, 0xa2}
 
 pub struct FontFile {
     native: UnsafeCell<ComPtr<IDWriteFontFile>>,
@@ -175,7 +173,7 @@ impl FontFile {
             assert!(hr == 0);
 
             let mut local_loader: ComPtr<IDWriteLocalFontFileLoader> =
-                match loader.query_interface(&UuidOfIDWriteLocalFontFileLoader) {
+                match loader.query_interface(&IDWriteLocalFontFileLoader::uuidof()) {
                     Some(local_loader) => local_loader,
                     None => return None,
                 };

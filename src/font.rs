@@ -17,8 +17,6 @@ use std::mem;
 use super::*;
 use helpers::*;
 
-DEFINE_GUID!{UuidOfIDWriteFont1, 0xacd16696, 0x8c14, 0x4f5d, 0x87, 0x7e, 0xfe, 0x3f, 0xc1, 0xd3, 0x27, 0x38}
-
 pub struct Font {
     native: UnsafeCell<ComPtr<IDWriteFont>>,
 }
@@ -63,7 +61,7 @@ impl Font {
 
     pub fn is_monospace(&self) -> Option<bool> {
         unsafe {
-            let font1: Option<ComPtr<IDWriteFont1>> = (*self.native.get()).query_interface(&UuidOfIDWriteFont1);
+            let font1: Option<ComPtr<IDWriteFont1>> = (*self.native.get()).query_interface(&IDWriteFont1::uuidof());
             font1.map(|font| font.IsMonospacedFont() == TRUE)
         }
     }

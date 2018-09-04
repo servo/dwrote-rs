@@ -16,6 +16,7 @@ extern crate serde;
 
 include!("types.rs");
 
+use winapi::Interface;
 use winapi::um::dwrite::DWRITE_FACTORY_TYPE_SHARED;
 use winapi::um::dwrite::IDWriteFactory;
 use winapi::um::dwrite::IDWriteRenderingParams;
@@ -90,8 +91,6 @@ mod font_collection_impl; pub use font_collection_impl::CustomFontCollectionLoad
 // expose `IDWriteGeometrySink` in an idiomatic way.
 mod geometry_sink_impl;
 
-DEFINE_GUID!{UuidOfIDWriteFactory, 0xb859ee5a, 0xd838, 0x4b5b, 0xa2, 0xe8, 0x1a, 0xdc, 0x7d, 0x93, 0xdb, 0x48}
-
 unsafe impl Sync for ComPtr<IDWriteFactory> { }
 unsafe impl Sync for ComPtr<IDWriteRenderingParams> {}
 
@@ -113,7 +112,7 @@ lazy_static! {
             let mut factory: ComPtr<IDWriteFactory> = ComPtr::new();
             let hr = dwrite_create_factory(
                 DWRITE_FACTORY_TYPE_SHARED,
-                &UuidOfIDWriteFactory,
+                &IDWriteFactory::uuidof(),
                 factory.getter_addrefs());
             assert!(hr == S_OK);
             factory.forget() as usize
