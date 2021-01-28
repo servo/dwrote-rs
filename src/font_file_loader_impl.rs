@@ -1,5 +1,6 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::marker::Send;
 use std::sync::atomic::AtomicUsize;
@@ -77,10 +78,10 @@ impl FontFileLoader {
 unsafe impl Send for FontFileLoader {}
 unsafe impl Sync for FontFileLoader {}
 
-struct FontFileStream {
+struct FontFileStream<'a> {
     refcount: atomic::AtomicUsize,
     key: usize,
-    data: Arc<Vec<u8>>,
+    data: Arc<Cow<'a, [u8]>>,
 }
 
 const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileStreamVtbl {
@@ -134,8 +135,8 @@ const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileS
     },
 };
 
-impl FontFileStream {
-    pub fn new(key: usize, data: Arc<Vec<u8>>) -> FontFileStream {
+impl<'a> FontFileStream<'a> {
+    pub fn new(key: usize, data: Arc<Cow<'a, [u8]>>) -> FontFileStream {
         FontFileStream {
             refcount: AtomicUsize::new(1),
             key,
@@ -144,20 +145,20 @@ impl FontFileStream {
     }
 }
 
-impl Drop for FontFileStream {
+impl<'a> Drop for FontFileStream<'a> {
     fn drop(&mut self) {
         DataFontHelper::unregister_font_data(self.key);
     }
 }
 
-impl Com<IDWriteFontFileStream> for FontFileStream {
+impl<'a> Com<IDWriteFontFileStream> for FontFileStream<'a> {
     type Vtbl = IDWriteFontFileStreamVtbl;
     fn vtbl() -> &'static IDWriteFontFileStreamVtbl {
         FontFileStreamVtbl
     }
 }
 
-impl Com<IUnknown> for FontFileStream {
+impl<'a> Com<IUnknown> for FontFileStream<'a> {
     type Vtbl = IUnknownVtbl;
     fn vtbl() -> &'static IUnknownVtbl {
         &FontFileStreamVtbl.parent
@@ -193,8 +194,8 @@ lazy_static! {
 pub struct DataFontHelper;
 
 impl DataFontHelper {
-    pub fn register_font_data(
-        font_data: Arc<Vec<u8>>,
+    pub fn register_font_data<'a>(
+        font_data: Arc<Cow<'a, [u8]>>,
     ) -> (
         ComPtr<IDWriteFontFile>,
         ComPtr<IDWriteFontFileStream>,
