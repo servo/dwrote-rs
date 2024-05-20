@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+use std::borrow::Cow;
 use std::cell::UnsafeCell;
 use std::ffi::OsString;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
@@ -63,7 +64,7 @@ impl FontFile {
         }
     }
 
-    pub fn new_from_data(data: Arc<Vec<u8>>) -> Option<FontFile> {
+    pub fn new_from_data(data: Arc<Cow<'static, [u8]>>) -> Option<FontFile> {
         let (font_file, font_file_stream, key) = DataFontHelper::register_font_data(data);
 
         let mut ff = FontFile {
@@ -80,7 +81,7 @@ impl FontFile {
         }
     }
 
-    pub fn analyze_data(data: Arc<Vec<u8>>) -> u32 {
+    pub fn analyze_data(data: Arc<Cow<'static, [u8]>>) -> u32 {
         let (font_file, font_file_stream, key) = DataFontHelper::register_font_data(data);
 
         let mut ff = FontFile {
