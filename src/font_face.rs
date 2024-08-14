@@ -102,7 +102,7 @@ impl FontFace {
 
     pub fn metrics(&self) -> FontMetrics {
         unsafe {
-            let font_1: Option<ComPtr<IDWriteFontFace1>> = (*self.native.get()).cast().ok();
+            let font_1 = self.get_face1();
             match font_1 {
                 None => {
                     let mut metrics = mem::zeroed();
