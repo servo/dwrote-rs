@@ -21,6 +21,7 @@ use winapi::um::dwrite::{DWRITE_GLYPH_OFFSET, DWRITE_MATRIX, DWRITE_RENDERING_MO
 use winapi::um::dwrite::{DWRITE_RENDERING_MODE_DEFAULT, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC};
 use winapi::um::dwrite_1::IDWriteFontFace1;
 use winapi::um::dwrite_3::{IDWriteFontFace5, IDWriteFontResource, DWRITE_FONT_AXIS_VALUE};
+use winapi::Interface;
 use wio::com::ComPtr;
 
 use super::{DWriteFactory, DefaultDWriteRenderParams, FontFile, FontMetrics};
@@ -30,6 +31,7 @@ use crate::outline_builder::OutlineBuilder;
 
 pub struct FontFace {
     native: UnsafeCell<ComPtr<IDWriteFontFace>>,
+    face1: UnsafeCell<Option<ComPtr<IDWriteFontFace1>>>,
     face5: UnsafeCell<Option<ComPtr<IDWriteFontFace5>>>,
 }
 
@@ -38,6 +40,7 @@ impl FontFace {
         let cell = UnsafeCell::new(native);
         FontFace {
             native: cell,
+            face1: UnsafeCell::new(None),
             face5: UnsafeCell::new(None),
         }
     }
@@ -286,6 +289,34 @@ impl FontFace {
         }
     }
 
+    pub fn has_kerning_pairs(&self) -> bool {
+        unsafe {
+            match self.get_face1() {
+                Some(face1) => face1.HasKerningPairs() == TRUE,
+                None => false,
+            }
+        }
+    }
+
+    pub fn get_glyph_pair_kerning_adjustment(&self, first_glyph: u16, second_glyph: u16) -> i32 {
+        unsafe {
+            match self.get_face1() {
+                Some(face1) => {
+                    let mut adjustments = [0; 2];
+                    let hr = face1.GetKerningPairAdjustments(
+                        2,
+                        [first_glyph, second_glyph].as_ptr(),
+                        adjustments.as_mut_ptr(),
+                    );
+                    assert_eq!(hr, S_OK);
+
+                    adjustments[0]
+                }
+                None => 0,
+            }
+        }
+    }
+
     #[inline]
     pub fn get_type(&self) -> FontFaceType {
         unsafe {
@@ -308,11 +339,24 @@ impl FontFace {
     }
 
     #[inline]
+    unsafe fn get_face1(&self) -> Option<ComPtr<IDWriteFontFace1>> {
+        self.get_interface(&self.face1)
+    }
+
+    #[inline]
     unsafe fn get_face5(&self) -> Option<ComPtr<IDWriteFontFace5>> {
-        if (*self.face5.get()).is_none() {
-            *self.face5.get() = (*self.native.get()).cast().ok()
+        self.get_interface(&self.face5)
+    }
+
+    #[inline]
+    unsafe fn get_interface<I: Interface>(
+        &self,
+        interface: &UnsafeCell<Option<ComPtr<I>>>,
+    ) -> Option<ComPtr<I>> {
+        if (*interface.get()).is_none() {
+            *interface.get() = (*self.native.get()).cast().ok()
         }
-        (*self.face5.get()).clone()
+        (*interface.get()).clone()
     }
 
     pub fn has_variations(&self) -> bool {
@@ -358,6 +402,7 @@ impl Clone for FontFace {
         unsafe {
             FontFace {
                 native: UnsafeCell::new((*self.native.get()).clone()),
+                face1: UnsafeCell::new(None),
                 face5: UnsafeCell::new(None),
             }
         }
