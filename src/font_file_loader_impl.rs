@@ -178,7 +178,7 @@ unsafe impl Sync for FontFileLoaderWrapper {}
 
 lazy_static! {
     static ref FONT_FILE_STREAM_MAP: Mutex<HashMap<usize, FontFileStreamPtr>> =
-        { Mutex::new(HashMap::new()) };
+        Mutex::new(HashMap::new());
     static ref FONT_FILE_LOADER: Mutex<FontFileLoaderWrapper> = {
         unsafe {
             let ffl_native = FontFileLoader::new();
