@@ -63,8 +63,13 @@ impl FontFile {
         }
     }
 
+    #[deprecated(since = "0.11.2", note = "please use `new_from_buffer` instead")]
     pub fn new_from_data(data: Arc<Vec<u8>>) -> Option<FontFile> {
-        let (font_file, font_file_stream, key) = DataFontHelper::register_font_data(data);
+        Self::new_from_buffer(data)
+    }
+
+    pub fn new_from_buffer(data: Arc<dyn AsRef<[u8]> + Sync + Send>) -> Option<FontFile> {
+        let (font_file, font_file_stream, key) = DataFontHelper::register_font_buffer(data);
 
         let mut ff = FontFile {
             native: UnsafeCell::new(font_file),
@@ -80,8 +85,13 @@ impl FontFile {
         }
     }
 
+    #[deprecated(since = "0.11.2", note = "please use `analyze_buffer` instead")]
     pub fn analyze_data(data: Arc<Vec<u8>>) -> u32 {
-        let (font_file, font_file_stream, key) = DataFontHelper::register_font_data(data);
+        Self::analyze_buffer(data)
+    }
+
+    pub fn analyze_buffer(buffer: Arc<dyn AsRef<[u8]> + Sync + Send>) -> u32 {
+        let (font_file, font_file_stream, key) = DataFontHelper::register_font_buffer(buffer);
 
         let mut ff = FontFile {
             native: UnsafeCell::new(font_file),

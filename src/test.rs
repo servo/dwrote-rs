@@ -92,7 +92,11 @@ fn test_create_font_file_from_bytes() {
     assert!(bytes.len() > 0);
 
     // now go back
-    let new_font = FontFile::new_from_data(Arc::new(bytes));
+    #[allow(deprecated)]
+    let new_font = FontFile::new_from_data(Arc::new(bytes.clone()));
+    assert!(new_font.is_some());
+
+    let new_font = FontFile::new_from_buffer(Arc::new(bytes));
     assert!(new_font.is_some());
 
     let _new_font = new_font.unwrap();

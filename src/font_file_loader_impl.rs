@@ -80,7 +80,7 @@ unsafe impl Sync for FontFileLoader {}
 struct FontFileStream {
     refcount: atomic::AtomicUsize,
     key: usize,
-    data: Arc<Vec<u8>>,
+    data: Arc<dyn AsRef<[u8]> + Sync + Send>,
 }
 
 const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileStreamVtbl {
@@ -95,11 +95,12 @@ const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileS
         ) -> HRESULT {
             let this = FontFileStream::from_interface(This);
             *fragmentContext = ptr::null_mut();
-            if (fileOffset + fragmentSize) as usize > this.data.len() {
+            let data = (*this.data).as_ref();
+            if (fileOffset + fragmentSize) as usize > data.len() {
                 return E_INVALIDARG;
             }
             let index = fileOffset as usize;
-            *fragmentStart = this.data[index..].as_ptr() as *const c_void;
+            *fragmentStart = data[index..].as_ptr() as *const c_void;
             S_OK
         }
         ReadFileFragment
@@ -118,7 +119,7 @@ const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileS
             fileSize: *mut UINT64,
         ) -> HRESULT {
             let this = FontFileStream::from_interface(This);
-            *fileSize = this.data.len() as UINT64;
+            *fileSize = (*this.data).as_ref().len() as UINT64;
             S_OK
         }
         GetFileSize
@@ -135,7 +136,7 @@ const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileS
 };
 
 impl FontFileStream {
-    pub fn new(key: usize, data: Arc<Vec<u8>>) -> FontFileStream {
+    pub fn new(key: usize, data: Arc<dyn AsRef<[u8]> + Sync + Send>) -> FontFileStream {
         FontFileStream {
             refcount: AtomicUsize::new(1),
             key,
@@ -190,11 +191,11 @@ lazy_static! {
     };
 }
 
-pub struct DataFontHelper;
+pub(crate) struct DataFontHelper;
 
 impl DataFontHelper {
-    pub fn register_font_data(
-        font_data: Arc<Vec<u8>>,
+    pub(crate) fn register_font_buffer(
+        font_data: Arc<dyn AsRef<[u8]> + Sync + Send>,
     ) -> (
         ComPtr<IDWriteFontFile>,
         ComPtr<IDWriteFontFileStream>,
