@@ -22,7 +22,7 @@ use crate::com_helpers::*;
 
 struct FontFileLoader;
 
-const FontFileLoaderVtbl: &'static IDWriteFontFileLoaderVtbl = &IDWriteFontFileLoaderVtbl {
+const FontFileLoaderVtbl: &IDWriteFontFileLoaderVtbl = &IDWriteFontFileLoaderVtbl {
     parent: implement_iunknown!(static IDWriteFontFileLoader, FontFileLoader),
     CreateStreamFromKey: {
         unsafe extern "system" fn CreateStreamFromKey(
@@ -83,7 +83,7 @@ struct FontFileStream {
     data: Arc<Vec<u8>>,
 }
 
-const FontFileStreamVtbl: &'static IDWriteFontFileStreamVtbl = &IDWriteFontFileStreamVtbl {
+const FontFileStreamVtbl: &IDWriteFontFileStreamVtbl = &IDWriteFontFileStreamVtbl {
     parent: implement_iunknown!(IDWriteFontFileStream, FontFileStream),
     ReadFileFragment: {
         unsafe extern "system" fn ReadFileFragment(

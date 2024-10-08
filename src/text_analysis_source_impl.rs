@@ -38,7 +38,7 @@ pub trait TextAnalysisSourceMethods {
     ///
     /// Return locale and length of text (in utf-16 code units) for which the
     /// locale is valid.
-    fn get_locale_name<'a>(&'a self, text_position: u32) -> (Cow<'a, str>, u32);
+    fn get_locale_name(&self, text_position: u32) -> (Cow<'_, str>, u32);
 
     /// Get the text direction for the paragraph.
     fn get_paragraph_reading_direction(&self) -> DWRITE_READING_DIRECTION;
@@ -80,7 +80,7 @@ impl<'a> CustomTextAnalysisSourceImpl<'a> {
         inner: Box<dyn TextAnalysisSourceMethods + 'a>,
         text: Cow<'a, [wchar_t]>,
     ) -> CustomTextAnalysisSourceImpl<'a> {
-        assert!(text.len() <= (std::u32::MAX as usize));
+        assert!(text.len() <= (u32::MAX as usize));
         CustomTextAnalysisSourceImpl {
             _refcount: AtomicUsize::new(1),
             inner,
@@ -100,7 +100,7 @@ impl<'a> CustomTextAnalysisSourceImpl<'a> {
         text: Cow<'a, [wchar_t]>,
         number_subst: NumberSubstitution,
     ) -> CustomTextAnalysisSourceImpl<'a> {
-        assert!(text.len() <= (std::u32::MAX as usize));
+        assert!(text.len() <= (u32::MAX as usize));
         CustomTextAnalysisSourceImpl {
             _refcount: AtomicUsize::new(1),
             inner,
