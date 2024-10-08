@@ -137,11 +137,15 @@ unsafe extern "system" fn CustomTextAnalysisSourceImpl_GetLocaleName(
     let (locale, text_len) = this.inner.get_locale_name(text_position);
 
     // Copy the locale data into the buffer
-    for (i, c) in OsStr::new(&*locale).encode_wide().chain(Some(0)).enumerate() {
+    for (i, c) in OsStr::new(&*locale)
+        .encode_wide()
+        .chain(Some(0))
+        .enumerate()
+    {
         // -1 here is deliberate: it ensures that we never write to the last character in
         // this.locale_buf, so that the buffer is always null-terminated.
         if i >= this.locale_buf.len() - 1 {
-            break
+            break;
         }
 
         *this.locale_buf.get_unchecked_mut(i) = c;
@@ -169,8 +173,8 @@ unsafe extern "system" fn CustomTextAnalysisSourceImpl_GetNumberSubstitution(
             let com_ptr = &number_subst.native;
             com_ptr.AddRef();
             com_ptr.as_raw()
-        },
-        None => std::ptr::null_mut()
+        }
+        None => std::ptr::null_mut(),
     };
 
     S_OK

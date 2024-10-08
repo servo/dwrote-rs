@@ -12,8 +12,8 @@ use winapi::um::dwrite::IDWriteFontCollectionLoader;
 use winapi::um::dwrite::{IDWriteFont, IDWriteFontCollection, IDWriteFontFamily};
 use wio::com::ComPtr;
 
-use crate::helpers::*;
 use super::{DWriteFactory, Font, FontDescriptor, FontFace, FontFamily};
+use crate::helpers::*;
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -48,10 +48,8 @@ impl FontCollection {
     pub fn get_system(update: bool) -> FontCollection {
         unsafe {
             let mut native: *mut IDWriteFontCollection = ptr::null_mut();
-            let hr = (*DWriteFactory()).GetSystemFontCollection(
-                &mut native,
-                if update { TRUE } else { FALSE },
-            );
+            let hr = (*DWriteFactory())
+                .GetSystemFontCollection(&mut native, if update { TRUE } else { FALSE });
             assert!(hr == 0);
 
             FontCollection {
