@@ -10,9 +10,7 @@ fn test_system_family_iter() {
     let system_fc = FontCollection::system();
     let count = system_fc.families_iter().count();
     assert!(count > 0);
-    assert!(system_fc
-        .families_iter()
-        .any(|f| f.name() == "Arial"));
+    assert!(system_fc.families_iter().any(|f| f.name() == "Arial"));
 }
 
 #[test]
@@ -90,11 +88,6 @@ fn test_create_font_file_from_bytes() {
     let bytes = files[0].get_font_file_bytes();
     assert!(!bytes.is_empty());
 
-    // now go back
-    #[allow(deprecated)]
-    let new_font = FontFile::new_from_data(Arc::new(bytes.clone()));
-    assert!(new_font.is_some());
-
     let new_font = FontFile::new_from_buffer(Arc::new(bytes));
     assert!(new_font.is_some());
 
@@ -119,10 +112,7 @@ fn test_glyph_image() {
     let device_pixel_ratio = 1.0f32;
     let em_size = 10.0f32;
 
-    let design_units_per_em = match face.metrics() {
-        FontMetrics::Metrics0(ref metrics) => metrics.designUnitsPerEm,
-        FontMetrics::Metrics1(ref metrics) => metrics.designUnitsPerEm,
-    };
+    let design_units_per_em = face.metrics().metrics0().designUnitsPerEm;
     let design_units_per_pixel = design_units_per_em as f32 / 16.;
 
     let scaled_design_units_to_pixels = (em_size * device_pixel_ratio) / design_units_per_pixel;
@@ -153,7 +143,7 @@ fn test_glyph_image() {
     rt.draw_glyph_run(
         x,
         y,
-        DWRITE_MEASURING_MODE_NATURAL,
+        windows::Win32::Graphics::DirectWrite::DWRITE_MEASURING_MODE_GDI_NATURAL,
         &face,
         em_size,
         &[a_index],

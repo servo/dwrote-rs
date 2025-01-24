@@ -20,7 +20,18 @@ lazy_static = "1"
 winapi = { version = "0.3.6", features = ["dwrite", "dwrite_1", "dwrite_3", "winnt", "unknwnbase", "libloaderapi", "winnls"] }
 serde = { version = "1.0", optional = true }
 serde_derive = { version = "1.0", optional = true }
-wio = "0.2"
+windows-core = "0.58"
+windows = { version = "0.58", features = [
+  "implement",
+  "Win32_Graphics_DirectWrite",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Direct2D",
+  "Win32_Graphics_Direct2D_Common",
+  "Win32_System_Com",
+  "Win32_System_LibraryLoader",
+  "Win32_System_SystemServices",
+  "Win32_Globalization"
+] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-pc-windows-msvc"]

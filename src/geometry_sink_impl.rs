@@ -6,16 +6,16 @@ use std::sync::atomic::AtomicUsize;
 use winapi::shared::guiddef::REFIID;
 use winapi::shared::minwindef::{UINT, ULONG};
 use winapi::shared::winerror::S_OK;
-use winapi::um::d2d1::{ID2D1SimplifiedGeometrySink, ID2D1SimplifiedGeometrySinkVtbl};
-use winapi::um::d2d1::{D2D1_BEZIER_SEGMENT, D2D1_FIGURE_BEGIN, D2D1_FIGURE_END};
-use winapi::um::d2d1::{D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE, D2D1_PATH_SEGMENT, D2D1_POINT_2F};
+use windows::Win32::Graphics::Direct2D::Common::{ID2D1SimplifiedGeometrySink, ID2D1SimplifiedGeometrySink_Vtbl};
+use windows::Win32::Graphics::Direct2D::Common::{D2D1_BEZIER_SEGMENT, D2D1_FIGURE_BEGIN, D2D1_FIGURE_END};
+use windows::Win32::Graphics::Direct2D::Common::{D2D1_FIGURE_END_CLOSED, D2D1_FILL_MODE, D2D1_PATH_SEGMENT, D2D_POINT_2F};
 use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
 use winapi::um::winnt::HRESULT;
 
 use crate::com_helpers::Com;
 use crate::outline_builder::OutlineBuilder;
 
-static GEOMETRY_SINK_VTBL: ID2D1SimplifiedGeometrySinkVtbl = ID2D1SimplifiedGeometrySinkVtbl {
+static GEOMETRY_SINK_VTBL: ID2D1SimplifiedGeometrySink_Vtbl = ID2D1SimplifiedGeometrySink_Vtbl {
     parent: implement_iunknown!(static ID2D1SimplifiedGeometrySink, GeometrySinkImpl),
     BeginFigure: GeometrySinkImpl_BeginFigure,
     EndFigure: GeometrySinkImpl_EndFigure,
@@ -34,9 +34,9 @@ pub struct GeometrySinkImpl {
 }
 
 impl Com<ID2D1SimplifiedGeometrySink> for GeometrySinkImpl {
-    type Vtbl = ID2D1SimplifiedGeometrySinkVtbl;
+    type Vtbl = ID2D1SimplifiedGeometrySink_Vtbl;
     #[inline]
-    fn vtbl() -> &'static ID2D1SimplifiedGeometrySinkVtbl {
+    fn vtbl() -> &'static ID2D1SimplifiedGeometrySink_Vtbl {
         &GEOMETRY_SINK_VTBL
     }
 }
@@ -45,7 +45,7 @@ impl Com<IUnknown> for GeometrySinkImpl {
     type Vtbl = IUnknownVtbl;
     #[inline]
     fn vtbl() -> &'static IUnknownVtbl {
-        &GEOMETRY_SINK_VTBL.parent
+        &GEOMETRY_SINK_VTBL.base__
     }
 }
 
@@ -58,11 +58,7 @@ impl GeometrySinkImpl {
     }
 }
 
-unsafe extern "system" fn GeometrySinkImpl_BeginFigure(
-    this: *mut ID2D1SimplifiedGeometrySink,
-    start_point: D2D1_POINT_2F,
-    _: D2D1_FIGURE_BEGIN,
-) {
+unsafe extern "system" fn GeometrySinkImpl_BeginFigure(*mut c_void this, D2D_POINT_2F, D2D1_FIGURE_BEGIN) {
     let this = GeometrySinkImpl::from_interface(this);
     this
         .outline_builder
@@ -81,7 +77,7 @@ unsafe extern "system" fn GeometrySinkImpl_EndFigure(
 
 unsafe extern "system" fn GeometrySinkImpl_AddLines(
     this: *mut ID2D1SimplifiedGeometrySink,
-    points: *const D2D1_POINT_2F,
+    points: *const D2D_POINT_2F,
     points_count: UINT,
 ) {
     let this = GeometrySinkImpl::from_interface(this);

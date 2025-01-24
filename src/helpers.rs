@@ -4,45 +4,47 @@
 
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
-use winapi::ctypes::wchar_t;
-use winapi::shared::minwindef::{BOOL, FALSE};
-use winapi::shared::winerror::S_OK;
-use winapi::um::dwrite::IDWriteLocalizedStrings;
-use winapi::um::winnls::GetUserDefaultLocaleName;
-use wio::com::ComPtr;
+use windows::core::HSTRING;
+use windows::Win32::Foundation::{BOOL, FALSE};
+use windows::Win32::Globalization::GetUserDefaultLocaleName;
+use windows::Win32::Graphics::DirectWrite::IDWriteLocalizedStrings;
 
 lazy_static! {
-    static ref SYSTEM_LOCALE: Vec<wchar_t> = {
+    static ref EN_US_LOCALE: HSTRING = HSTRING::from("en-us");
+    static ref SYSTEM_LOCALE: HSTRING = {
         unsafe {
-            let mut locale: Vec<wchar_t> = vec![0; 85];
-            GetUserDefaultLocaleName(locale.as_mut_ptr(), locale.len() as i32 - 1);
-            locale
+            let mut locale: Vec<u16> = vec![0; 85];
+            let len = GetUserDefaultLocaleName(&mut locale);
+            if len <= 1 { // 0 is failure, 1 is empty string
+                EN_US_LOCALE.clone()
+            } else {
+                HSTRING::from_wide(&locale).unwrap_or(EN_US_LOCALE.clone())
+            }
         }
     };
-    static ref EN_US_LOCALE: Vec<wchar_t> = OsStr::new("en-us").to_wide_null();
 }
 
-pub fn get_locale_string(strings: &mut ComPtr<IDWriteLocalizedStrings>) -> String {
+pub fn get_locale_string(strings: &IDWriteLocalizedStrings) -> String {
     unsafe {
         let mut index: u32 = 0;
         let mut exists: BOOL = FALSE;
-        let hr = strings.FindLocaleName((*SYSTEM_LOCALE).as_ptr(), &mut index, &mut exists);
-        if hr != S_OK || exists == FALSE {
-            let hr = strings.FindLocaleName((*EN_US_LOCALE).as_ptr(), &mut index, &mut exists);
-            if hr != S_OK || exists == FALSE {
+        strings
+            .FindLocaleName::<&HSTRING>(&SYSTEM_LOCALE, &mut index, &mut exists)
+            .unwrap();
+        if exists == FALSE {
+            strings
+                .FindLocaleName::<&HSTRING>(&EN_US_LOCALE, &mut index, &mut exists)
+                .unwrap();
+            if exists == FALSE {
                 // Ultimately fall back to first locale on list
                 index = 0;
             }
         }
+        let length = strings.GetStringLength(index).unwrap() as usize;
 
-        let mut length: u32 = 0;
-        let hr = strings.GetStringLength(index, &mut length);
-        assert!(hr == 0);
-
-        let mut name: Vec<wchar_t> = Vec::with_capacity(length as usize + 1);
-        let hr = strings.GetString(index, name.as_mut_ptr(), length + 1);
-        assert!(hr == 0);
-        name.set_len(length as usize);
+        let mut name: Vec<u16> = vec![0; length + 1];
+        strings.GetString(index, &mut name).unwrap();
+        name.set_len(length);
 
         String::from_utf16(&name).ok().unwrap()
     }

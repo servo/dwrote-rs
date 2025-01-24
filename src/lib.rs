@@ -13,63 +13,32 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
-extern crate winapi;
+extern crate windows;
 
 include!("types.rs");
 
-use std::ffi::CString;
-use std::ptr;
-use winapi::shared::guiddef::REFIID;
-use winapi::shared::winerror::S_OK;
-use winapi::um::dwrite::IDWriteFactory;
-use winapi::um::dwrite::IDWriteRenderingParams;
-use winapi::um::dwrite::DWRITE_FACTORY_TYPE;
-use winapi::um::dwrite::DWRITE_FACTORY_TYPE_SHARED;
-use winapi::um::unknwnbase::IUnknown;
-use winapi::um::winnt::LPCSTR;
-use winapi::Interface;
-
-pub use winapi::um::winnt::HRESULT;
-
 mod helpers;
-use helpers::ToWide;
-use std::os::raw::c_void;
 
 #[cfg(test)]
 mod test;
 
 // We still use the DWrite structs for things like metrics; re-export them
 // here
-pub use winapi::shared::windef::RECT;
-pub use winapi::um::dcommon::DWRITE_MEASURING_MODE;
-pub use winapi::um::dcommon::{
-    DWRITE_MEASURING_MODE_GDI_CLASSIC, DWRITE_MEASURING_MODE_GDI_NATURAL,
-    DWRITE_MEASURING_MODE_NATURAL,
-};
-pub use winapi::um::dwrite::DWRITE_FONT_METRICS as FontMetrics0;
-pub use winapi::um::dwrite::DWRITE_FONT_SIMULATIONS;
-pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
-pub use winapi::um::dwrite::DWRITE_RENDERING_MODE;
-pub use winapi::um::dwrite::DWRITE_TEXTURE_TYPE;
-pub use winapi::um::dwrite::{DWRITE_TEXTURE_ALIASED_1x1, DWRITE_TEXTURE_CLEARTYPE_3x1};
-pub use winapi::um::dwrite::{
-    DWRITE_FONT_SIMULATIONS_BOLD, DWRITE_FONT_SIMULATIONS_NONE, DWRITE_FONT_SIMULATIONS_OBLIQUE,
-};
-pub use winapi::um::dwrite::{DWRITE_GLYPH_RUN, DWRITE_MATRIX};
-pub use winapi::um::dwrite::{
+pub use windows::Win32::Foundation::RECT;
+pub use windows::Win32::Graphics::DirectWrite::{
+    DWRITE_TEXTURE_ALIASED_1x1, DWRITE_TEXTURE_CLEARTYPE_3x1, DWRITE_FONT_AXIS_VALUE,
+    DWRITE_FONT_METRICS as FontMetrics0, DWRITE_FONT_METRICS1 as FontMetrics1,
+    DWRITE_FONT_SIMULATIONS, DWRITE_FONT_SIMULATIONS_BOLD, DWRITE_FONT_SIMULATIONS_NONE,
+    DWRITE_FONT_SIMULATIONS_OBLIQUE, DWRITE_GLYPH_OFFSET as GlyphOffset, DWRITE_GLYPH_RUN,
+    DWRITE_MATRIX, DWRITE_MEASURING_MODE, DWRITE_MEASURING_MODE_GDI_CLASSIC,
+    DWRITE_MEASURING_MODE_GDI_NATURAL, DWRITE_MEASURING_MODE_NATURAL, DWRITE_RENDERING_MODE,
     DWRITE_RENDERING_MODE_ALIASED, DWRITE_RENDERING_MODE_CLEARTYPE_GDI_CLASSIC,
     DWRITE_RENDERING_MODE_CLEARTYPE_GDI_NATURAL, DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL,
     DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC, DWRITE_RENDERING_MODE_DEFAULT,
     DWRITE_RENDERING_MODE_GDI_CLASSIC, DWRITE_RENDERING_MODE_GDI_NATURAL,
     DWRITE_RENDERING_MODE_NATURAL, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC,
-    DWRITE_RENDERING_MODE_OUTLINE,
+    DWRITE_RENDERING_MODE_OUTLINE, DWRITE_TEXTURE_TYPE,
 };
-pub use winapi::um::dwrite_1::DWRITE_FONT_METRICS1 as FontMetrics1;
-pub use winapi::um::dwrite_3::DWRITE_FONT_AXIS_VALUE;
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryW};
-
-#[macro_use]
-mod com_helpers;
 
 mod bitmap_render_target;
 pub use bitmap_render_target::BitmapRenderTarget;
@@ -113,55 +82,4 @@ pub use text_analysis_source_impl::{
 
 // This is an internal implementation of `GeometrySink` so that we can
 // expose `IDWriteGeometrySink` in an idiomatic way.
-mod geometry_sink_impl;
-
-lazy_static! {
-    static ref DWRITE_FACTORY_RAW_PTR: usize = {
-        unsafe {
-            type DWriteCreateFactoryType =
-                extern "system" fn(DWRITE_FACTORY_TYPE, REFIID, *mut *mut IUnknown) -> HRESULT;
-
-            let dwrite_dll = LoadLibraryW("dwrite.dll".to_wide_null().as_ptr());
-            assert!(!dwrite_dll.is_null());
-            let create_factory_name = CString::new("DWriteCreateFactory").unwrap();
-            let dwrite_create_factory_ptr =
-                GetProcAddress(dwrite_dll, create_factory_name.as_ptr() as LPCSTR);
-            assert!(!dwrite_create_factory_ptr.is_null());
-
-            let dwrite_create_factory = mem::transmute::<*const c_void, DWriteCreateFactoryType>(
-                dwrite_create_factory_ptr as *const _,
-            );
-
-            let mut factory: *mut IDWriteFactory = ptr::null_mut();
-            let hr = dwrite_create_factory(
-                DWRITE_FACTORY_TYPE_SHARED,
-                &IDWriteFactory::uuidof(),
-                &mut factory as *mut *mut IDWriteFactory as *mut *mut IUnknown,
-            );
-            assert!(hr == S_OK);
-            factory as usize
-        }
-    };
-    static ref DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: usize = {
-        unsafe {
-            let mut default_rendering_params: *mut IDWriteRenderingParams = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateRenderingParams(&mut default_rendering_params);
-            assert!(hr == S_OK);
-            default_rendering_params as usize
-        }
-    };
-} // end lazy static
-
-// FIXME vlad would be nice to return, say, FactoryPtr<IDWriteFactory>
-// that has a DerefMut impl, so that we can write
-// DWriteFactory().SomeOperation() as opposed to
-// (*DWriteFactory()).SomeOperation()
-#[allow(non_snake_case)]
-fn DWriteFactory() -> *mut IDWriteFactory {
-    (*DWRITE_FACTORY_RAW_PTR) as *mut IDWriteFactory
-}
-
-#[allow(non_snake_case)]
-fn DefaultDWriteRenderParams() -> *mut IDWriteRenderingParams {
-    (*DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR) as *mut IDWriteRenderingParams
-}
+// mod geometry_sink_impl;

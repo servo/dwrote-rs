@@ -2,43 +2,34 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::cell::UnsafeCell;
-use std::mem::{size_of, zeroed};
+use std::mem::{size_of, zeroed, ManuallyDrop};
 use std::slice;
-use winapi::ctypes::c_void;
-use winapi::shared::windef::{HDC, RECT};
-use winapi::um::dcommon::DWRITE_MEASURING_MODE;
-use winapi::um::dwrite::IDWriteBitmapRenderTarget;
-use winapi::um::dwrite::{DWRITE_GLYPH_OFFSET, DWRITE_GLYPH_RUN};
-use winapi::um::wingdi::{GetCurrentObject, GetObjectW, BITMAP, OBJ_BITMAP, RGB};
-use wio::com::ComPtr;
+use windows::Win32::Foundation::{COLORREF, FALSE, RECT};
+use windows::Win32::Graphics::DirectWrite::{
+    IDWriteBitmapRenderTarget, DWRITE_GLYPH_OFFSET, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE,
+};
+use windows::Win32::Graphics::Gdi::{GetCurrentObject, GetObjectW, BITMAP, HDC, OBJ_BITMAP};
 
 use super::{FontFace, RenderingParams};
 
 pub struct BitmapRenderTarget {
-    native: UnsafeCell<ComPtr<IDWriteBitmapRenderTarget>>,
+    native: IDWriteBitmapRenderTarget,
 }
 
 impl BitmapRenderTarget {
-    pub fn take(native: ComPtr<IDWriteBitmapRenderTarget>) -> BitmapRenderTarget {
-        BitmapRenderTarget {
-            native: UnsafeCell::new(native),
-        }
-    }
-
-    pub unsafe fn as_ptr(&self) -> *mut IDWriteBitmapRenderTarget {
-        (*self.native.get()).as_raw()
+    pub fn take(native: IDWriteBitmapRenderTarget) -> BitmapRenderTarget {
+        BitmapRenderTarget { native }
     }
 
     // A dip is 1/96th of an inch, so this value is the number of pixels per inch divided by 96.
     pub fn set_pixels_per_dip(&self, ppd: f32) {
         unsafe {
-            (*self.native.get()).SetPixelsPerDip(ppd);
+            let _ = self.native.SetPixelsPerDip(ppd);
         }
     }
 
     pub fn get_memory_dc(&self) -> HDC {
-        unsafe { (*self.native.get()).GetMemoryDC() }
+        unsafe { self.native.GetMemoryDC() }
     }
 
     pub fn draw_glyph_run(
@@ -61,28 +52,31 @@ impl BitmapRenderTarget {
             let r = (color.0 * 255.0) as u8;
             let g = (color.1 * 255.0) as u8;
             let b = (color.2 * 255.0) as u8;
+            let color = COLORREF((r as u32) | ((g as u32) << 8) | ((b as u32) << 16));
 
-            let mut glyph_run: DWRITE_GLYPH_RUN = zeroed();
-            glyph_run.fontFace = font_face.as_ptr();
-            glyph_run.fontEmSize = em_size;
-            glyph_run.glyphCount = glyph_indices.len() as u32;
-            glyph_run.glyphIndices = glyph_indices.as_ptr();
-            glyph_run.glyphAdvances = glyph_advances.as_ptr();
-            glyph_run.glyphOffsets = glyph_offsets.as_ptr();
-            glyph_run.isSideways = 0;
-            glyph_run.bidiLevel = 0;
+            let glyph_run = DWRITE_GLYPH_RUN {
+                fontFace: ManuallyDrop::new(Some(font_face.native.clone())),
+                fontEmSize: em_size,
+                glyphCount: glyph_indices.len() as u32,
+                glyphIndices: glyph_indices.as_ptr(),
+                glyphAdvances: glyph_advances.as_ptr(),
+                glyphOffsets: glyph_offsets.as_ptr(),
+                isSideways: FALSE,
+                bidiLevel: 0,
+            };
 
             let mut rect: RECT = zeroed();
-            let hr = (*self.native.get()).DrawGlyphRun(
-                baseline_origin_x,
-                baseline_origin_y,
-                measuring_mode,
-                &glyph_run,
-                rendering_params.as_ptr(),
-                RGB(r, g, b),
-                &mut rect,
-            );
-            assert!(hr == 0);
+            self.native
+                .DrawGlyphRun(
+                    baseline_origin_x,
+                    baseline_origin_y,
+                    measuring_mode,
+                    &glyph_run,
+                    &rendering_params.native,
+                    color,
+                    Some(&mut rect),
+                )
+                .unwrap();
             rect
         }
     }
@@ -98,9 +92,9 @@ impl BitmapRenderTarget {
             let memory_dc = self.get_memory_dc();
             let mut bitmap: BITMAP = zeroed();
             let ret = GetObjectW(
-                GetCurrentObject(memory_dc, OBJ_BITMAP),
+                GetCurrentObject(HDC(memory_dc.0), OBJ_BITMAP),
                 size_of::<BITMAP>() as i32,
-                &mut bitmap as *mut _ as *mut c_void,
+                Some(&mut bitmap as *mut _ as *mut _),
             );
             assert!(ret == size_of::<BITMAP>() as i32);
             assert!(bitmap.bmBitsPixel == 32);

@@ -2,45 +2,38 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::cell::UnsafeCell;
 use std::ptr;
-use winapi::um::dwrite::IDWriteBitmapRenderTarget;
-use winapi::um::dwrite::IDWriteGdiInterop;
-use wio::com::ComPtr;
+use windows::Win32::Graphics::DirectWrite::{
+    DWriteCreateFactory, IDWriteFactory, IDWriteGdiInterop, DWRITE_FACTORY_TYPE_SHARED,
+};
+use windows::Win32::Graphics::Gdi::HDC;
 
-use super::{BitmapRenderTarget, DWriteFactory};
+use super::BitmapRenderTarget;
 
 pub struct GdiInterop {
-    native: UnsafeCell<ComPtr<IDWriteGdiInterop>>,
+    native: IDWriteGdiInterop,
 }
 
 impl GdiInterop {
     pub fn create() -> GdiInterop {
         unsafe {
-            let mut native: *mut IDWriteGdiInterop = ptr::null_mut();
-            let hr = (*DWriteFactory()).GetGdiInterop(&mut native);
-            assert!(hr == 0);
-            GdiInterop::take(ComPtr::from_raw(native))
+            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
+            let native = factory.GetGdiInterop().unwrap();
+            GdiInterop::take(native)
         }
     }
 
-    pub fn take(native: ComPtr<IDWriteGdiInterop>) -> GdiInterop {
-        GdiInterop {
-            native: UnsafeCell::new(native),
-        }
+    pub fn take(native: IDWriteGdiInterop) -> GdiInterop {
+        GdiInterop { native }
     }
 
     pub fn create_bitmap_render_target(&self, width: u32, height: u32) -> BitmapRenderTarget {
         unsafe {
-            let mut native: *mut IDWriteBitmapRenderTarget = ptr::null_mut();
-            let hr = (*self.native.get()).CreateBitmapRenderTarget(
-                ptr::null_mut(),
-                width,
-                height,
-                &mut native,
-            );
-            assert!(hr == 0);
-            BitmapRenderTarget::take(ComPtr::from_raw(native))
+            let native = self
+                .native
+                .CreateBitmapRenderTarget(HDC(ptr::null_mut()), width, height)
+                .unwrap();
+            BitmapRenderTarget::take(native)
         }
     }
 }

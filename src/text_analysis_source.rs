@@ -5,14 +5,15 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use winapi::ctypes::wchar_t;
-use winapi::um::dwrite::IDWriteTextAnalysisSource;
-use wio::com::ComPtr;
+use windows::core::Interface;
+use windows::Win32::Graphics::DirectWrite::{
+    DWriteCreateFactory, IDWriteFactory, IDWriteTextAnalysisSource, DWRITE_FACTORY_TYPE_SHARED,
+};
 
 use super::*;
-use crate::com_helpers::Com;
 
 pub struct TextAnalysisSource<'a> {
-    native: ComPtr<IDWriteTextAnalysisSource>,
+    pub(crate) native: IDWriteTextAnalysisSource,
     phantom: PhantomData<CustomTextAnalysisSourceImpl<'a>>,
 }
 
@@ -26,15 +27,19 @@ impl<'a> TextAnalysisSource<'a> {
         inner: Box<dyn TextAnalysisSourceMethods + 'a>,
         text: Cow<'a, [wchar_t]>,
     ) -> TextAnalysisSource<'a> {
-        let native = unsafe {
-            ComPtr::from_raw(
-                CustomTextAnalysisSourceImpl::from_text_native(inner, text).into_interface(),
-            )
-        };
-        TextAnalysisSource {
-            native,
-            phantom: PhantomData,
-        }
+        todo!();
+        // unsafe {
+        //     let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
+        //     let analyzer = factory.CreateTextAnalyzer().unwrap();
+
+        //     let native = IDWriteTextAnalysisSource::from_raw(
+        //         CustomTextAnalysisSourceImpl::from_text_native(inner, text) as *mut _,
+        //     );
+        //     TextAnalysisSource {
+        //         native,
+        //         phantom: PhantomData,
+        //     }
+        // }
     }
 
     /// Create a new custom TextAnalysisSource for the given text and a trait
@@ -47,23 +52,18 @@ impl<'a> TextAnalysisSource<'a> {
         text: Cow<'a, [wchar_t]>,
         number_subst: NumberSubstitution,
     ) -> TextAnalysisSource<'a> {
-        let native = unsafe {
-            ComPtr::from_raw(
-                CustomTextAnalysisSourceImpl::from_text_and_number_subst_native(
-                    inner,
-                    text,
-                    number_subst,
-                )
-                .into_interface(),
-            )
-        };
-        TextAnalysisSource {
-            native,
-            phantom: PhantomData,
-        }
-    }
-
-    pub fn as_ptr(&self) -> *mut IDWriteTextAnalysisSource {
-        self.native.as_raw()
+        todo!();
+        // let native = unsafe {
+        //     CustomTextAnalysisSourceImpl::from_text_and_number_subst_native(
+        //         inner,
+        //         text,
+        //         number_subst,
+        //     )
+        //     .into_interface()
+        // };
+        // TextAnalysisSource {
+        //     native,
+        //     phantom: PhantomData,
+        // }
     }
 }

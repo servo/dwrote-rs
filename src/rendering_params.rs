@@ -2,34 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::cell::UnsafeCell;
-use std::ptr;
-use winapi::um::dwrite::IDWriteRenderingParams;
-use wio::com::ComPtr;
-
-use super::DWriteFactory;
+use windows::Win32::Graphics::DirectWrite::{
+    DWriteCreateFactory, IDWriteFactory, IDWriteRenderingParams, DWRITE_FACTORY_TYPE_SHARED,
+};
 
 pub struct RenderingParams {
-    native: UnsafeCell<ComPtr<IDWriteRenderingParams>>,
+    pub(crate) native: IDWriteRenderingParams,
 }
 
 impl RenderingParams {
     pub fn create_for_primary_monitor() -> RenderingParams {
         unsafe {
-            let mut native: *mut IDWriteRenderingParams = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateRenderingParams(&mut native);
-            assert!(hr == 0);
-            RenderingParams::take(ComPtr::from_raw(native))
+            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
+            let native = factory.CreateRenderingParams().unwrap();
+            RenderingParams::take(native)
         }
     }
 
-    pub fn take(native: ComPtr<IDWriteRenderingParams>) -> RenderingParams {
-        RenderingParams {
-            native: UnsafeCell::new(native),
-        }
-    }
-
-    pub unsafe fn as_ptr(&self) -> *mut IDWriteRenderingParams {
-        (*self.native.get()).as_raw()
+    pub fn take(native: IDWriteRenderingParams) -> RenderingParams {
+        RenderingParams { native }
     }
 }
