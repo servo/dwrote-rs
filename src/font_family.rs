@@ -4,7 +4,6 @@
 
 use std::cell::UnsafeCell;
 use std::ptr;
-use winapi::shared::winerror;
 use winapi::um::dwrite::IDWriteLocalizedStrings;
 use winapi::um::dwrite::{IDWriteFont, IDWriteFontCollection, IDWriteFontFamily};
 use wio::com::ComPtr;
@@ -36,7 +35,7 @@ impl FontFamily {
         unsafe {
             let hr = (*self.native.get()).GetFamilyNames(&mut family_names);
             if hr != 0 {
-                return Err(winerror::HRESULT_CODE(hr));
+                return Err(hr);
             }
             Ok(get_locale_string(&mut ComPtr::from_raw(family_names)))
         }
@@ -67,7 +66,7 @@ impl FontFamily {
                 &mut font,
             );
             if hr != 0 {
-                return Err(winerror::HRESULT_CODE(hr));
+                return Err(hr);
             }
             Ok(Font::take(ComPtr::from_raw(font)))
         }
@@ -82,7 +81,7 @@ impl FontFamily {
         unsafe {
             let hr = (*self.native.get()).GetFontCollection(&mut collection);
             if hr != 0 {
-                return Err(winerror::HRESULT_CODE(hr));
+                return Err(hr);
             }
             Ok(FontCollection::take(ComPtr::from_raw(collection)))
         }
@@ -101,7 +100,7 @@ impl FontFamily {
         unsafe {
             let hr = (*self.native.get()).GetFont(index, &mut font);
             if hr != 0 {
-                return Err(winerror::HRESULT_CODE(hr));
+                return Err(hr);
             }
             Ok(Font::take(ComPtr::from_raw(font)))
         }
