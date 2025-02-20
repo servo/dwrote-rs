@@ -4,6 +4,7 @@
 
 use std::cell::UnsafeCell;
 use std::ptr;
+use winapi::shared::winerror;
 use winapi::um::dwrite::IDWriteLocalizedStrings;
 use winapi::um::dwrite::{IDWriteFont, IDWriteFontCollection, IDWriteFontFamily};
 use wio::com::ComPtr;
@@ -27,12 +28,17 @@ impl FontFamily {
     }
 
     pub fn name(&self) -> String {
-        unsafe {
-            let mut family_names: *mut IDWriteLocalizedStrings = ptr::null_mut();
-            let hr = (*self.native.get()).GetFamilyNames(&mut family_names);
-            assert!(hr == 0);
+        self.try_name().unwrap()
+    }
 
-            get_locale_string(&mut ComPtr::from_raw(family_names))
+    pub fn try_name(&self) -> Result<String, HRESULT> {
+        let mut family_names: *mut IDWriteLocalizedStrings = ptr::null_mut();
+        unsafe {
+            let hr = (*self.native.get()).GetFamilyNames(&mut family_names);
+            if hr != 0 {
+                return Err(winerror::HRESULT_CODE(hr));
+            }
+            Ok(get_locale_string(&mut ComPtr::from_raw(family_names)))
         }
     }
 
@@ -42,25 +48,43 @@ impl FontFamily {
         stretch: FontStretch,
         style: FontStyle,
     ) -> Font {
+        self.try_get_first_matching_font(weight, stretch, style)
+            .unwrap()
+    }
+
+    pub fn try_get_first_matching_font(
+        &self,
+        weight: FontWeight,
+        stretch: FontStretch,
+        style: FontStyle,
+    ) -> Result<Font, HRESULT> {
+        let mut font: *mut IDWriteFont = ptr::null_mut();
         unsafe {
-            let mut font: *mut IDWriteFont = ptr::null_mut();
             let hr = (*self.native.get()).GetFirstMatchingFont(
                 weight.t(),
                 stretch.t(),
                 style.t(),
                 &mut font,
             );
-            assert!(hr == 0);
-            Font::take(ComPtr::from_raw(font))
+            if hr != 0 {
+                return Err(winerror::HRESULT_CODE(hr));
+            }
+            Ok(Font::take(ComPtr::from_raw(font)))
         }
     }
 
     pub fn get_font_collection(&self) -> FontCollection {
+        self.try_get_font_collection().unwrap()
+    }
+
+    pub fn try_get_font_collection(&self) -> Result<FontCollection, HRESULT> {
+        let mut collection: *mut IDWriteFontCollection = ptr::null_mut();
         unsafe {
-            let mut collection: *mut IDWriteFontCollection = ptr::null_mut();
             let hr = (*self.native.get()).GetFontCollection(&mut collection);
-            assert!(hr == 0);
-            FontCollection::take(ComPtr::from_raw(collection))
+            if hr != 0 {
+                return Err(winerror::HRESULT_CODE(hr));
+            }
+            Ok(FontCollection::take(ComPtr::from_raw(collection)))
         }
     }
 
@@ -69,11 +93,17 @@ impl FontFamily {
     }
 
     pub fn get_font(&self, index: u32) -> Font {
+        self.try_get_font(index).unwrap()
+    }
+
+    pub fn try_get_font(&self, index: u32) -> Result<Font, HRESULT> {
+        let mut font: *mut IDWriteFont = ptr::null_mut();
         unsafe {
-            let mut font: *mut IDWriteFont = ptr::null_mut();
             let hr = (*self.native.get()).GetFont(index, &mut font);
-            assert!(hr == 0);
-            Font::take(ComPtr::from_raw(font))
+            if hr != 0 {
+                return Err(winerror::HRESULT_CODE(hr));
+            }
+            Ok(Font::take(ComPtr::from_raw(font)))
         }
     }
 }
