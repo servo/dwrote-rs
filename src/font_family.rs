@@ -26,11 +26,12 @@ impl FontFamily {
         (*self.native.get()).as_raw()
     }
 
+    #[deprecated(note = "Use `family_name` instead.")]
     pub fn name(&self) -> String {
-        self.try_name().unwrap()
+        self.family_name().unwrap()
     }
 
-    pub fn try_name(&self) -> Result<String, HRESULT> {
+    pub fn family_name(&self) -> Result<String, HRESULT> {
         let mut family_names: *mut IDWriteLocalizedStrings = ptr::null_mut();
         unsafe {
             let hr = (*self.native.get()).GetFamilyNames(&mut family_names);
@@ -41,17 +42,17 @@ impl FontFamily {
         }
     }
 
+    #[deprecated(note = "Use `first_matching_font` instead.")]
     pub fn get_first_matching_font(
         &self,
         weight: FontWeight,
         stretch: FontStretch,
         style: FontStyle,
     ) -> Font {
-        self.try_get_first_matching_font(weight, stretch, style)
-            .unwrap()
+        self.first_matching_font(weight, stretch, style).unwrap()
     }
 
-    pub fn try_get_first_matching_font(
+    pub fn first_matching_font(
         &self,
         weight: FontWeight,
         stretch: FontStretch,
@@ -72,11 +73,12 @@ impl FontFamily {
         }
     }
 
+    #[deprecated(note = "Use `font_collection` instead.")]
     pub fn get_font_collection(&self) -> FontCollection {
-        self.try_get_font_collection().unwrap()
+        self.font_collection().unwrap()
     }
 
-    pub fn try_get_font_collection(&self) -> Result<FontCollection, HRESULT> {
+    pub fn font_collection(&self) -> Result<FontCollection, HRESULT> {
         let mut collection: *mut IDWriteFontCollection = ptr::null_mut();
         unsafe {
             let hr = (*self.native.get()).GetFontCollection(&mut collection);
@@ -91,11 +93,12 @@ impl FontFamily {
         unsafe { (*self.native.get()).GetFontCount() }
     }
 
+    #[deprecated(note = "Use `font` instead.")]
     pub fn get_font(&self, index: u32) -> Font {
-        self.try_get_font(index).unwrap()
+        self.font(index).unwrap()
     }
 
-    pub fn try_get_font(&self, index: u32) -> Result<Font, HRESULT> {
+    pub fn font(&self, index: u32) -> Result<Font, HRESULT> {
         let mut font: *mut IDWriteFont = ptr::null_mut();
         unsafe {
             let hr = (*self.native.get()).GetFont(index, &mut font);
