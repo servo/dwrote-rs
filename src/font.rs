@@ -87,49 +87,80 @@ impl Font {
         unsafe { mem::transmute::<u32, FontSimulations>((*self.native.get()).GetSimulations()) }
     }
 
+    #[deprecated(note = "Use `try_family_name` instead.")]
     pub fn family_name(&self) -> String {
+        self.try_family_name().unwrap()
+    }
+
+    pub fn try_family_name(&self) -> Result<String, HRESULT> {
+        let mut family: *mut IDWriteFontFamily = ptr::null_mut();
         unsafe {
-            let mut family: *mut IDWriteFontFamily = ptr::null_mut();
             let hr = (*self.native.get()).GetFontFamily(&mut family);
-            assert!(hr == 0);
+            if hr != S_OK {
+                return Err(hr);
+            }
 
-            FontFamily::take(ComPtr::from_raw(family)).name()
+            FontFamily::take(ComPtr::from_raw(family)).family_name()
         }
     }
 
+    #[deprecated(note = "Use `try_face_name` instead.")]
     pub fn face_name(&self) -> String {
-        unsafe {
-            let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
-            let hr = (*self.native.get()).GetFaceNames(&mut names);
-            assert!(hr == 0);
+        self.try_face_name().unwrap()
+    }
 
-            get_locale_string(&mut ComPtr::from_raw(names))
+    pub fn try_face_name(&self) -> Result<String, HRESULT> {
+        let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
+        unsafe {
+            let hr = (*self.native.get()).GetFaceNames(&mut names);
+            if hr != S_OK {
+                return Err(hr);
+            }
+
+            Ok(get_locale_string(&mut ComPtr::from_raw(names)))
         }
     }
 
+    #[deprecated(note = "Use `try_informational_string` instead.")]
     pub fn informational_string(&self, id: InformationalStringId) -> Option<String> {
+        self.try_informational_string(id).unwrap()
+    }
+
+    pub fn try_informational_string(
+        &self,
+        id: InformationalStringId,
+    ) -> Result<Option<String>, HRESULT> {
+        let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
+        let mut exists = FALSE;
+        let id = id as DWRITE_INFORMATIONAL_STRING_ID;
         unsafe {
-            let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
-            let mut exists = FALSE;
-            let id = id as DWRITE_INFORMATIONAL_STRING_ID;
             let hr = (*self.native.get()).GetInformationalStrings(id, &mut names, &mut exists);
-            assert!(hr == S_OK);
+            if hr != S_OK {
+                return Err(hr);
+            }
             if exists == TRUE {
-                Some(get_locale_string(&mut ComPtr::from_raw(names)))
+                Ok(Some(get_locale_string(&mut ComPtr::from_raw(names))))
             } else {
-                None
+                Ok(None)
             }
         }
     }
 
+    #[deprecated(note = "Use `try_create_font_face` instead.")]
     pub fn create_font_face(&self) -> FontFace {
+        self.try_create_font_face().unwrap()
+    }
+
+    pub fn try_create_font_face(&self) -> Result<FontFace, HRESULT> {
+        let mut face: *mut IDWriteFontFace = ptr::null_mut();
         // FIXME create_font_face should cache the FontFace and return it,
         // there's a 1:1 relationship
         unsafe {
-            let mut face: *mut IDWriteFontFace = ptr::null_mut();
             let hr = (*self.native.get()).CreateFontFace(&mut face);
-            assert!(hr == 0);
-            FontFace::take(ComPtr::from_raw(face))
+            if hr != S_OK {
+                return Err(hr);
+            }
+            Ok(FontFace::take(ComPtr::from_raw(face)))
         }
     }
 
