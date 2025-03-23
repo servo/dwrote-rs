@@ -114,6 +114,7 @@ impl FontCollection {
         self.font_family(index).unwrap()
     }
 
+    /// Returns the [`FontFamily`] at the given index.
     pub fn font_family(&self, index: u32) -> Result<FontFamily, HRESULT> {
         let mut family: *mut IDWriteFontFamily = ptr::null_mut();
         unsafe {
@@ -130,7 +131,7 @@ impl FontCollection {
         self.font_from_descriptor(desc).unwrap()
     }
 
-    // Find a font matching the given font descriptor in this font collection.
+    /// Find a font matching the given font descriptor in this [`FontCollection`].
     pub fn font_from_descriptor(&self, desc: &FontDescriptor) -> Result<Option<Font>, HRESULT> {
         if let Some(family) = self.font_family_by_name(&desc.family_name)? {
             let font = family.first_matching_font(desc.weight, desc.stretch, desc.style)?;
@@ -151,6 +152,7 @@ impl FontCollection {
         self.font_from_face(face).ok()
     }
 
+    /// Get a [`Font`] from the given [`FontFace`].
     pub fn font_from_face(&self, face: &FontFace) -> Result<Font, HRESULT> {
         let mut font: *mut IDWriteFont = ptr::null_mut();
         unsafe {
@@ -167,6 +169,8 @@ impl FontCollection {
         self.font_family_by_name(family_name).unwrap()
     }
 
+    /// Find a [`FontFamily`] with the given name. Returns `None` if no family
+    /// with that name is found.
     pub fn font_family_by_name(&self, family_name: &str) -> Result<Option<FontFamily>, HRESULT> {
         let mut index: u32 = 0;
         let mut exists: BOOL = FALSE;
