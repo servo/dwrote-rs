@@ -57,7 +57,7 @@ impl Font {
 
     pub fn to_descriptor(&self) -> FontDescriptor {
         FontDescriptor {
-            family_name: self.family_name(),
+            family_name: self.get_family_name(),
             stretch: self.stretch(),
             style: self.style(),
             weight: self.weight(),
@@ -87,12 +87,12 @@ impl Font {
         unsafe { mem::transmute::<u32, FontSimulations>((*self.native.get()).GetSimulations()) }
     }
 
-    #[deprecated(note = "Use `try_family_name` instead.")]
-    pub fn family_name(&self) -> String {
-        self.try_family_name().unwrap()
+    #[deprecated(note = "Use `family_name` instead.")]
+    pub fn get_family_name(&self) -> String {
+        self.family_name().unwrap()
     }
 
-    pub fn try_family_name(&self) -> Result<String, HRESULT> {
+    pub fn family_name(&self) -> Result<String, HRESULT> {
         let mut family: *mut IDWriteFontFamily = ptr::null_mut();
         unsafe {
             let hr = (*self.native.get()).GetFontFamily(&mut family);
@@ -104,12 +104,12 @@ impl Font {
         }
     }
 
-    #[deprecated(note = "Use `try_face_name` instead.")]
-    pub fn face_name(&self) -> String {
-        self.try_face_name().unwrap()
+    #[deprecated(note = "Use `face_name` instead.")]
+    pub fn get_face_name(&self) -> String {
+        self.face_name().unwrap()
     }
 
-    pub fn try_face_name(&self) -> Result<String, HRESULT> {
+    pub fn face_name(&self) -> Result<String, HRESULT> {
         let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
         unsafe {
             let hr = (*self.native.get()).GetFaceNames(&mut names);
@@ -121,12 +121,12 @@ impl Font {
         }
     }
 
-    #[deprecated(note = "Use `try_informational_string` instead.")]
-    pub fn informational_string(&self, id: InformationalStringId) -> Option<String> {
-        self.try_informational_string(id).unwrap()
+    #[deprecated(note = "Use `informational_string` instead.")]
+    pub fn get_informational_string(&self, id: InformationalStringId) -> Option<String> {
+        self.informational_string(id).unwrap()
     }
 
-    pub fn try_informational_string(
+    pub fn informational_string(
         &self,
         id: InformationalStringId,
     ) -> Result<Option<String>, HRESULT> {
@@ -146,12 +146,12 @@ impl Font {
         }
     }
 
-    #[deprecated(note = "Use `try_create_font_face` instead.")]
-    pub fn create_font_face(&self) -> FontFace {
-        self.try_create_font_face().unwrap()
+    #[deprecated(note = "Use `create_font_face` instead.")]
+    pub fn get_create_font_face(&self) -> FontFace {
+        self.create_font_face().unwrap()
     }
 
-    pub fn try_create_font_face(&self) -> Result<FontFace, HRESULT> {
+    pub fn create_font_face(&self) -> Result<FontFace, HRESULT> {
         let mut face: *mut IDWriteFontFace = ptr::null_mut();
         // FIXME create_font_face should cache the FontFace and return it,
         // there's a 1:1 relationship
