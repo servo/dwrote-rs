@@ -50,22 +50,20 @@ impl FontFace {
         (*self.native.get()).as_raw()
     }
 
-    fn raw_files(&self) -> Result<Vec<*mut IDWriteFontFile>, HRESULT> {
+    unsafe fn raw_files(&self) -> Result<Vec<*mut IDWriteFontFile>, HRESULT> {
         let mut number_of_files: u32 = 0;
-        unsafe {
-            let hr = (*self.native.get()).GetFiles(&mut number_of_files, ptr::null_mut());
-            if hr != S_OK {
-                return Err(hr);
-            }
-
-            let mut file_ptrs: Vec<*mut IDWriteFontFile> =
-                vec![ptr::null_mut(); number_of_files as usize];
-            let hr = (*self.native.get()).GetFiles(&mut number_of_files, file_ptrs.as_mut_ptr());
-            if hr != S_OK {
-                return Err(hr);
-            }
-            Ok(file_ptrs)
+        let hr = (*self.native.get()).GetFiles(&mut number_of_files, ptr::null_mut());
+        if hr != S_OK {
+            return Err(hr);
         }
+
+        let mut file_ptrs: Vec<*mut IDWriteFontFile> =
+            vec![ptr::null_mut(); number_of_files as usize];
+        let hr = (*self.native.get()).GetFiles(&mut number_of_files, file_ptrs.as_mut_ptr());
+        if hr != S_OK {
+            return Err(hr);
+        }
+        Ok(file_ptrs)
     }
 
     #[deprecated(note = "Use `files` instead.")]
@@ -74,12 +72,14 @@ impl FontFace {
     }
 
     pub fn files(&self) -> Result<Vec<FontFile>, HRESULT> {
-        self.raw_files().map(|file_ptrs| {
-            file_ptrs
-                .iter()
-                .map(|p| unsafe { FontFile::take(ComPtr::from_raw(*p)) })
-                .collect()
-        })
+        unsafe {
+            self.raw_files().map(|file_ptrs| {
+                file_ptrs
+                    .iter()
+                    .map(|p| FontFile::take(ComPtr::from_raw(*p)))
+                    .collect()
+            })
+        }
     }
 
     pub fn create_font_face_with_simulations(
