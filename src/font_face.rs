@@ -87,7 +87,7 @@ impl FontFace {
         simulations: DWRITE_FONT_SIMULATIONS,
     ) -> FontFace {
         unsafe {
-            let file_ptrs = self.get_raw_files();
+            let file_ptrs = self.raw_files().unwrap();
             let face_type = (*self.native.get()).GetType();
             let face_index = (*self.native.get()).GetIndex();
             let mut face: *mut IDWriteFontFace = ptr::null_mut();
