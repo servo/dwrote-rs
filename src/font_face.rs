@@ -20,7 +20,10 @@ use winapi::um::dwrite::{DWRITE_FONT_SIMULATIONS, DWRITE_GLYPH_METRICS};
 use winapi::um::dwrite::{DWRITE_GLYPH_OFFSET, DWRITE_MATRIX, DWRITE_RENDERING_MODE};
 use winapi::um::dwrite::{DWRITE_RENDERING_MODE_DEFAULT, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC};
 use winapi::um::dwrite_1::IDWriteFontFace1;
-use winapi::um::dwrite_3::{IDWriteFontFace5, IDWriteFontResource, DWRITE_FONT_AXIS_VALUE};
+use winapi::um::dwrite_3::{
+    IDWriteFontFace5, IDWriteFontResource, DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE,
+    DWRITE_FONT_AXIS_VALUE,
+};
 use winapi::um::winnt::HRESULT;
 use winapi::Interface;
 use wio::com::ComPtr;
@@ -467,6 +470,57 @@ impl FontFace {
                 None => false,
             }
         }
+    }
+
+    /// If this font has variations, return a [`Vec<DWRITE_FONT_AXIS_VALUE`] of the
+    /// variation axes and their values. If the font does not have variations,
+    /// return an empty `Vec`.
+    pub fn variations(&self) -> Result<Vec<DWRITE_FONT_AXIS_VALUE>, HRESULT> {
+        let face5 = unsafe { self.get_face5() };
+        let Some(face5) = face5 else {
+            return Ok(vec![]);
+        };
+        if unsafe { face5.HasVariations() != TRUE } {
+            return Ok(vec![]);
+        }
+        let axis_count = unsafe { face5.GetFontAxisValueCount() as usize };
+        if axis_count == 0 {
+            return Ok(vec![]);
+        }
+
+        let mut resource: *mut IDWriteFontResource = ptr::null_mut();
+        let hr = unsafe { face5.GetFontResource(&mut resource) };
+        if hr != S_OK || resource.is_null() {
+            return Err(hr);
+        }
+
+        let mut axis_values = Vec::with_capacity(axis_count);
+        axis_values.resize(
+            axis_count,
+            DWRITE_FONT_AXIS_VALUE {
+                axisTag: 0,
+                value: 0.,
+            },
+        );
+
+        let hr = unsafe { face5.GetFontAxisValues(axis_values.as_mut_ptr(), axis_count as u32) };
+        if hr != S_OK {
+            return Err(hr);
+        }
+
+        let resource = unsafe { &*resource };
+        Ok(axis_values
+            .iter()
+            .enumerate()
+            .filter_map(|(index, axis_value)| {
+                let attributes = unsafe { resource.GetFontAxisAttributes(index as u32) };
+                if attributes & DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE == 0 {
+                    None
+                } else {
+                    Some(*axis_value)
+                }
+            })
+            .collect())
     }
 
     pub fn create_font_face_with_variations(
