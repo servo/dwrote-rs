@@ -554,7 +554,9 @@ impl FontFace {
 
     pub fn simulations(&self) -> FontSimulations {
         unsafe {
-            std::mem::transmute::<DWRITE_FONT_SIMULATIONS, FontSimulations>((*self.native.get()).GetSimulations())
+            std::mem::transmute::<DWRITE_FONT_SIMULATIONS, FontSimulations>(
+                (*self.native.get()).GetSimulations(),
+            )
         }
     }
 }
