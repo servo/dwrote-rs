@@ -32,6 +32,7 @@ use super::{DWriteFactory, DefaultDWriteRenderParams, FontFile, FontMetrics};
 use crate::com_helpers::Com;
 use crate::geometry_sink_impl::GeometrySinkImpl;
 use crate::outline_builder::OutlineBuilder;
+use crate::FontSimulations;
 
 pub struct FontFace {
     native: UnsafeCell<ComPtr<IDWriteFontFace>>,
@@ -548,6 +549,12 @@ impl FontFace {
                 }
             }
             None
+        }
+    }
+
+    pub fn simulations(&self) -> FontSimulations {
+        unsafe {
+            std::mem::transmute::<DWRITE_FONT_SIMULATIONS, FontSimulations>((*self.native.get()).GetSimulations())
         }
     }
 }
