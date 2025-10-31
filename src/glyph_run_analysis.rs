@@ -2,22 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::cell::UnsafeCell;
-use std::mem;
-use std::ptr;
-use winapi::shared::windef::RECT;
-use winapi::um::dcommon::DWRITE_MEASURING_MODE;
-use winapi::um::dwrite::DWRITE_TEXTURE_CLEARTYPE_3x1;
-use winapi::um::dwrite::IDWriteGlyphRunAnalysis;
-use winapi::um::dwrite::{DWRITE_TEXTURE_ALIASED_1x1, DWRITE_GLYPH_RUN, DWRITE_TEXTURE_TYPE};
-use winapi::um::dwrite::{DWRITE_MATRIX, DWRITE_RENDERING_MODE};
-use winapi::um::winnt::HRESULT;
-use wio::com::ComPtr;
+use windows::Win32::Foundation::RECT;
+use windows::Win32::Graphics::DirectWrite::{IDWriteGlyphRunAnalysis, DWRITE_GLYPH_RUN, DWRITE_MATRIX, DWRITE_RENDERING_MODE, DWRITE_MEASURING_MODE, DWRITE_TEXTURE_TYPE, DWRITE_TEXTURE_CLEARTYPE_3x1, DWRITE_TEXTURE_ALIASED_1x1};
+use windows_core::HRESULT;
 
 use super::DWriteFactory;
 
 pub struct GlyphRunAnalysis {
-    native: UnsafeCell<ComPtr<IDWriteGlyphRunAnalysis>>,
+    native: IDWriteGlyphRunAnalysis,
 }
 
 impl GlyphRunAnalysis {
@@ -31,32 +23,21 @@ impl GlyphRunAnalysis {
         baseline_y: f32,
     ) -> Result<GlyphRunAnalysis, HRESULT> {
         unsafe {
-            let mut native: *mut IDWriteGlyphRunAnalysis = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateGlyphRunAnalysis(
-                glyph_run as *const DWRITE_GLYPH_RUN,
+            let native = DWriteFactory().CreateGlyphRunAnalysis(
+                glyph_run,
                 pixels_per_dip,
-                transform
-                    .as_ref()
-                    .map(|x| x as *const _)
-                    .unwrap_or(ptr::null()),
+                transform.map(|t| &t as *const _),
                 rendering_mode,
                 measuring_mode,
                 baseline_x,
                 baseline_y,
-                &mut native,
-            );
-            if hr != 0 {
-                Err(hr)
-            } else {
-                Ok(GlyphRunAnalysis::take(ComPtr::from_raw(native)))
-            }
+            ) .map_err(|e| e.code())?;
+            Ok(GlyphRunAnalysis::take(native))
         }
     }
 
-    pub fn take(native: ComPtr<IDWriteGlyphRunAnalysis>) -> GlyphRunAnalysis {
-        GlyphRunAnalysis {
-            native: UnsafeCell::new(native),
-        }
+    pub fn take(native: IDWriteGlyphRunAnalysis) -> GlyphRunAnalysis {
+        GlyphRunAnalysis { native }
     }
 
     pub fn get_alpha_texture_bounds(
@@ -64,15 +45,7 @@ impl GlyphRunAnalysis {
         texture_type: DWRITE_TEXTURE_TYPE,
     ) -> Result<RECT, HRESULT> {
         unsafe {
-            let mut rect: RECT = mem::zeroed();
-            rect.left = 1234;
-            rect.top = 1234;
-            let hr = (*self.native.get()).GetAlphaTextureBounds(texture_type, &mut rect);
-            if hr != 0 {
-                Err(hr)
-            } else {
-                Ok(rect)
-            }
+            self.native.GetAlphaTextureBounds(texture_type).map_err(|e| e.code())
         }
     }
 
@@ -91,17 +64,12 @@ impl GlyphRunAnalysis {
                 };
 
             let mut out_bytes: Vec<u8> = vec![0; rect_bytes as usize];
-            let hr = (*self.native.get()).CreateAlphaTexture(
+            self.native.CreateAlphaTexture(
                 texture_type,
                 &rect,
-                out_bytes.as_mut_ptr(),
-                out_bytes.len() as u32,
-            );
-            if hr != 0 {
-                Err(hr)
-            } else {
-                Ok(out_bytes)
-            }
+                &mut out_bytes,
+            ).map_err(|e| e.code())?;
+            Ok(out_bytes)
         }
     }
 }
