@@ -4,6 +4,7 @@
 
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
+use std::sync::LazyLock;
 use winapi::ctypes::wchar_t;
 use winapi::shared::minwindef::{BOOL, FALSE};
 use winapi::shared::winerror::S_OK;
@@ -11,16 +12,13 @@ use winapi::um::dwrite::IDWriteLocalizedStrings;
 use winapi::um::winnls::GetUserDefaultLocaleName;
 use wio::com::ComPtr;
 
-lazy_static! {
-    static ref SYSTEM_LOCALE: Vec<wchar_t> = {
-        unsafe {
-            let mut locale: Vec<wchar_t> = vec![0; 85];
-            GetUserDefaultLocaleName(locale.as_mut_ptr(), locale.len() as i32 - 1);
-            locale
-        }
-    };
-    static ref EN_US_LOCALE: Vec<wchar_t> = OsStr::new("en-us").to_wide_null();
-}
+static SYSTEM_LOCALE: LazyLock<Vec<wchar_t>> = LazyLock::new(|| unsafe {
+    let mut locale: Vec<wchar_t> = vec![0; 85];
+    GetUserDefaultLocaleName(locale.as_mut_ptr(), locale.len() as i32 - 1);
+    locale
+});
+
+static EN_US_LOCALE: LazyLock<Vec<wchar_t>> = LazyLock::new(|| OsStr::new("en-us").to_wide_null());
 
 pub fn get_locale_string(strings: &mut ComPtr<IDWriteLocalizedStrings>) -> String {
     unsafe {

@@ -10,8 +10,6 @@ extern crate serde;
 #[cfg(feature = "serde_serialization")]
 extern crate serde_derive;
 
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 extern crate winapi;
 
@@ -19,6 +17,7 @@ include!("types.rs");
 
 use std::ffi::CString;
 use std::ptr;
+use std::sync::LazyLock;
 use winapi::shared::guiddef::REFIID;
 use winapi::shared::winerror::S_OK;
 use winapi::um::dwrite::IDWriteFactory;
@@ -115,42 +114,37 @@ pub use text_analysis_source_impl::{
 // expose `IDWriteGeometrySink` in an idiomatic way.
 mod geometry_sink_impl;
 
-lazy_static! {
-    static ref DWRITE_FACTORY_RAW_PTR: usize = {
-        unsafe {
-            type DWriteCreateFactoryType =
-                extern "system" fn(DWRITE_FACTORY_TYPE, REFIID, *mut *mut IUnknown) -> HRESULT;
+static DWRITE_FACTORY_RAW_PTR: LazyLock<usize> = LazyLock::new(|| unsafe {
+    type DWriteCreateFactoryType =
+        extern "system" fn(DWRITE_FACTORY_TYPE, REFIID, *mut *mut IUnknown) -> HRESULT;
 
-            let dwrite_dll = LoadLibraryW("dwrite.dll".to_wide_null().as_ptr());
-            assert!(!dwrite_dll.is_null());
-            let create_factory_name = CString::new("DWriteCreateFactory").unwrap();
-            let dwrite_create_factory_ptr =
-                GetProcAddress(dwrite_dll, create_factory_name.as_ptr() as LPCSTR);
-            assert!(!dwrite_create_factory_ptr.is_null());
+    let dwrite_dll = LoadLibraryW("dwrite.dll".to_wide_null().as_ptr());
+    assert!(!dwrite_dll.is_null());
+    let create_factory_name = CString::new("DWriteCreateFactory").unwrap();
+    let dwrite_create_factory_ptr =
+        GetProcAddress(dwrite_dll, create_factory_name.as_ptr() as LPCSTR);
+    assert!(!dwrite_create_factory_ptr.is_null());
 
-            let dwrite_create_factory = mem::transmute::<*const c_void, DWriteCreateFactoryType>(
-                dwrite_create_factory_ptr as *const _,
-            );
+    let dwrite_create_factory = mem::transmute::<*const c_void, DWriteCreateFactoryType>(
+        dwrite_create_factory_ptr as *const _,
+    );
 
-            let mut factory: *mut IDWriteFactory = ptr::null_mut();
-            let hr = dwrite_create_factory(
-                DWRITE_FACTORY_TYPE_SHARED,
-                &IDWriteFactory::uuidof(),
-                &mut factory as *mut *mut IDWriteFactory as *mut *mut IUnknown,
-            );
-            assert!(hr == S_OK);
-            factory as usize
-        }
-    };
-    static ref DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: usize = {
-        unsafe {
-            let mut default_rendering_params: *mut IDWriteRenderingParams = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateRenderingParams(&mut default_rendering_params);
-            assert!(hr == S_OK);
-            default_rendering_params as usize
-        }
-    };
-} // end lazy static
+    let mut factory: *mut IDWriteFactory = ptr::null_mut();
+    let hr = dwrite_create_factory(
+        DWRITE_FACTORY_TYPE_SHARED,
+        &IDWriteFactory::uuidof(),
+        &mut factory as *mut *mut IDWriteFactory as *mut *mut IUnknown,
+    );
+    assert!(hr == S_OK);
+    factory as usize
+});
+
+static DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: LazyLock<usize> = LazyLock::new(|| unsafe {
+    let mut default_rendering_params: *mut IDWriteRenderingParams = ptr::null_mut();
+    let hr = (*DWriteFactory()).CreateRenderingParams(&mut default_rendering_params);
+    assert!(hr == S_OK);
+    default_rendering_params as usize
+});
 
 // FIXME vlad would be nice to return, say, FactoryPtr<IDWriteFactory>
 // that has a DerefMut impl, so that we can write

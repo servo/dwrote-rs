@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::marker::Send;
 use std::sync::atomic::AtomicUsize;
-use std::sync::{atomic, Arc, Mutex};
+use std::sync::{atomic, Arc, LazyLock, Mutex};
 use std::{mem, ptr};
 use winapi::ctypes::c_void;
 use winapi::shared::basetsd::{UINT32, UINT64};
@@ -169,7 +169,7 @@ struct FontFileStreamPtr(*mut IDWriteFontFileStream);
 
 unsafe impl Send for FontFileStreamPtr {}
 
-static mut FONT_FILE_KEY: atomic::AtomicUsize = AtomicUsize::new(0);
+static FONT_FILE_KEY: atomic::AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone)]
 struct FontFileLoaderWrapper(ComPtr<IDWriteFontFileLoader>);
@@ -177,19 +177,16 @@ struct FontFileLoaderWrapper(ComPtr<IDWriteFontFileLoader>);
 unsafe impl Send for FontFileLoaderWrapper {}
 unsafe impl Sync for FontFileLoaderWrapper {}
 
-lazy_static! {
-    static ref FONT_FILE_STREAM_MAP: Mutex<HashMap<usize, FontFileStreamPtr>> =
-        Mutex::new(HashMap::new());
-    static ref FONT_FILE_LOADER: Mutex<FontFileLoaderWrapper> = {
-        unsafe {
-            let ffl_native = FontFileLoader::new();
-            let ffl = ComPtr::<IDWriteFontFileLoader>::from_raw(ffl_native.into_interface());
-            let hr = (*DWriteFactory()).RegisterFontFileLoader(ffl.as_raw());
-            assert!(hr == 0);
-            Mutex::new(FontFileLoaderWrapper(ffl))
-        }
-    };
-}
+static FONT_FILE_STREAM_MAP: LazyLock<Mutex<HashMap<usize, FontFileStreamPtr>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static FONT_FILE_LOADER: LazyLock<Mutex<FontFileLoaderWrapper>> = LazyLock::new(|| unsafe {
+    let ffl_native = FontFileLoader::new();
+    let ffl = ComPtr::<IDWriteFontFileLoader>::from_raw(ffl_native.into_interface());
+    let hr = (*DWriteFactory()).RegisterFontFileLoader(ffl.as_raw());
+    assert!(hr == 0);
+    Mutex::new(FontFileLoaderWrapper(ffl))
+});
 
 pub(crate) struct DataFontHelper;
 
