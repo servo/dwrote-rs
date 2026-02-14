@@ -38,7 +38,7 @@ impl FontFamily {
             if hr != 0 {
                 return Err(hr);
             }
-            Ok(get_locale_string(&mut ComPtr::from_raw(family_names)))
+            get_locale_string(&mut ComPtr::from_raw(family_names))
         }
     }
 
